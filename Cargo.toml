@@ -1,0 +1,9 @@
+[package]
+name = "rust-postgres-rustls"
+version = "0.1.0"
+authors = ["Jasper Bryant-Greene <jbg@rf.net.nz>"]
+
+[dependencies]
+postgres = "0.15"
+rustls = "0.12"
+webpki = "0.18.0-alpha"
