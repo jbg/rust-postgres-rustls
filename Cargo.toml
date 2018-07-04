@@ -1,5 +1,5 @@
 [package]
-name = "rust-postgres-rustls"
+name = "postgres-rustls"
 version = "0.1.0"
 authors = ["Jasper Bryant-Greene <jbg@rf.net.nz>"]
 
