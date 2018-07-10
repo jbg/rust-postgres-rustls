@@ -33,7 +33,8 @@ impl Rustls {
 impl TlsHandshake for Rustls {
     fn tls_handshake(&self, domain: &str, underlying_stream: Stream) -> Result<Box<TlsStream>, Box<Error + Sync + Send>> {
         let dns_name = webpki::DNSNameRef::try_from_ascii_str(domain)
-                                          .map_err(|_| io::Error::new(io::ErrorKind::Other, "failed to parse hostname"))?;
+                                          .map_err(|_| io::Error::new(io::ErrorKind::Other,
+                                                                      format!("failed to parse hostname: {}", domain)))?;
         let tls_session = rustls::ClientSession::new(&self.config, dns_name);
         Ok(Box::new(RustlsStream::new(tls_session, underlying_stream)))
     }
