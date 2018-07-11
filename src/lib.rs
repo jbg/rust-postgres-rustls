@@ -11,7 +11,8 @@ use std::sync::Arc;
 use postgres::tls::{Stream, TlsHandshake, TlsStream};
 
 pub struct Rustls {
-    config: Arc<rustls::ClientConfig>
+    config: Arc<rustls::ClientConfig>,
+    server_cn: Option<String>
 }
 
 impl fmt::Debug for Rustls {
@@ -21,24 +22,19 @@ impl fmt::Debug for Rustls {
 }
 
 impl Rustls {
-    pub fn new() -> Rustls {
-        Rustls { config: Arc::new(rustls::ClientConfig::new()) }
-    }
-
-    pub fn with_config(config: rustls::ClientConfig) -> Rustls {
-        Rustls { config: Arc::new(config) }
+    pub fn new(config: rustls::ClientConfig, server_cn: Option<String>) -> Rustls {
+        Rustls { config: Arc::new(config), server_cn }
     }
 }
 
 impl TlsHandshake for Rustls {
     fn tls_handshake(&self, domain: &str, underlying_stream: Stream) -> Result<Box<TlsStream>, Box<Error + Sync + Send>> {
-        // If the domain cannot be parsed as a DNSName, set it to "failed-to-parse-hostname".
-        // This is a dirty hack that allows you to connect to servers that present a certificate
-        // without a hostname in it (e.g. with an IP address) since webpki currently only supports
-        // DNS names. This will likely require turning off hostname verification. If your set of
-        // trusted server certificates is limited this might be safe.
-        let dns_name = webpki::DNSNameRef::try_from_ascii_str(domain)
-                                          .unwrap_or_else(|_| webpki::DNSNameRef::try_from_ascii_str("failed-to-parse-hostname").unwrap());
+        let hostname = match self.server_cn.clone() {
+            Some(cn) => cn,
+            None => domain.to_string()
+        };
+        let dns_name = webpki::DNSNameRef::try_from_ascii_str(&hostname)
+                                          .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("failed to parse hostname \"{}\": {:?}", hostname, e)))?;
         let tls_session = rustls::ClientSession::new(&self.config, dns_name);
         Ok(Box::new(RustlsStream::new(tls_session, underlying_stream)))
     }
