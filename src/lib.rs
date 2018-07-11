@@ -32,9 +32,13 @@ impl Rustls {
 
 impl TlsHandshake for Rustls {
     fn tls_handshake(&self, domain: &str, underlying_stream: Stream) -> Result<Box<TlsStream>, Box<Error + Sync + Send>> {
+        // If the domain cannot be parsed as a DNSName, set it to "failed-to-parse-hostname".
+        // This is a dirty hack that allows you to connect to servers that present a certificate
+        // without a hostname in it (e.g. with an IP address) since webpki currently only supports
+        // DNS names. This will likely require turning off hostname verification. If your set of
+        // trusted server certificates is limited this might be safe.
         let dns_name = webpki::DNSNameRef::try_from_ascii_str(domain)
-                                          .map_err(|_| io::Error::new(io::ErrorKind::Other,
-                                                                      format!("failed to parse hostname: {}", domain)))?;
+                                          .unwrap_or_else(|_| webpki::DNSNameRef::try_from_ascii_str("failed-to-parse-hostname").unwrap());
         let tls_session = rustls::ClientSession::new(&self.config, dns_name);
         Ok(Box::new(RustlsStream::new(tls_session, underlying_stream)))
     }
